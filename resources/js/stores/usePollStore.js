@@ -10,6 +10,11 @@ export function usePollStore() {
     polls.value = data;
   }
 
+  // Add a single new poll to the beginning of the list
+  function addPoll(poll) {
+    polls.value = [poll, ...polls.value];
+  }
+
   async function deletePoll(id) {
     const result = await fetchApi({ url: 'polls/' + id, method: 'DELETE' });
     if (result) {
@@ -17,5 +22,5 @@ export function usePollStore() {
     }
   }
 
-  return { polls, setPolls, deletePoll };
+  return { polls, setPolls, addPoll, deletePoll };
 }
