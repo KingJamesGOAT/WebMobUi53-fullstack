@@ -22,7 +22,6 @@ Route::get('/about', function () {
 
 Route::get('/@{username}', [ProfileController::class, 'show'])->where('username', '[A-Za-z0-9-_]+');
 
-Route::resource('posts', PostController::class)->only(['index', 'show']);
 
 Route::controller(AuthController::class)->group(function () {
     Route::get('/auth/register', 'showRegister');
@@ -42,3 +41,9 @@ Route::middleware('auth')->group(function () {
     Route::resource('tokens', TokenController::class)->only(['index', 'create', 'store', 'destroy']);
     Route::post('/auth/logout', [AuthController::class, 'logout']);
 });
+
+// Public post routes are declared LAST so that the named route /posts/create
+// (registered inside the auth group above) is matched first by Laravel.
+// If this were declared first, the {post} wildcard would intercept "create"
+// and attempt a database lookup, resulting in a 404.
+Route::resource('posts', PostController::class)->only(['index', 'show']);
