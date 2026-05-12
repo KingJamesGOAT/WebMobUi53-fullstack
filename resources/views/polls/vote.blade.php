@@ -3,5 +3,5 @@
         @vite(['resources/css/app.css', 'resources/js/poll-vote.js'])
     </x-slot>
 
-    <div id="app-vote" data-token="{{ $poll->secret_token }}"></div>
+    <div id="app-vote" data-token="{{ request()->route('token') }}"></div>
 </x-vue-app-layout>
