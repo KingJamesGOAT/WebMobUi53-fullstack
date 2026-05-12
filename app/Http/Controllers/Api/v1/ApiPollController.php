@@ -83,6 +83,52 @@ class ApiPollController extends Controller
     }
 
     /**
+     * Update the specified poll in storage.
+     */
+    public function update(Request $request, int $id)
+    {
+        // Find the poll by ID and ensure it belongs to the authenticated user
+        $poll = Poll::where('id', $id)->where('user_id', $request->user()->id)->first();
+
+        if (!$poll) {
+            return response()->json(['message' => 'Poll not found.'], 404);
+        }
+
+        // Apply the same validation as the store method
+        $request->validate([
+            'title' => 'nullable|string|max:255',
+            'question' => 'required|string|max:255',
+            'options' => 'required|array',
+            'options.*' => 'required|string|max:255',
+            'isMultipleChoice' => 'boolean',
+            'isPublicResults' => 'boolean',
+            'isDraft' => 'boolean',
+        ]);
+
+        // Update the poll fields
+        $poll->title = $request->title;
+        $poll->question = $request->question;
+        $poll->allow_multiple_choices = $request->isMultipleChoice ?? false;
+        $poll->results_public = $request->isPublicResults ?? false;
+        $poll->is_draft = $request->isDraft ?? false;
+        $poll->save();
+
+        // Delete all existing options for this poll to keep things simple
+        PollOption::where('poll_id', $poll->id)->delete();
+
+        // Recreate the new options from the request
+        foreach ($request->options as $optionText) {
+            $option = new PollOption();
+            $option->poll_id = $poll->id;
+            $option->label = $optionText;
+            $option->save();
+        }
+
+        // Return the updated poll as a JSON response
+        return response()->json($poll, 200);
+    }
+
+    /**
      * Remove the specified poll.
      */
     public function destroy(Request $request, int $id)

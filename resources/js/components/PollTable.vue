@@ -6,6 +6,8 @@
     polls: { type: Array, default: () => [] },
   });
 
+  const emit = defineEmits(['edit-poll', 'start-poll']);
+
   const { fetchApi } = useFetchApi();
   const { setPolls } = usePollStore();
 
@@ -47,7 +49,15 @@
             {{ new Date(poll.created_at).toLocaleDateString('fr-FR') }}
           </td>
           <td class="px-6 py-4 text-sm">
+            <button 
+              v-if="poll.is_draft"
+              @click="$emit('start-poll', poll)" 
+              class="bg-green-600 hover:bg-green-700 text-white font-medium px-3 py-1 rounded-md transition text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800"
+            >
+              Démarrer
+            </button>
             <a 
+              v-else
               :href="'/vote/' + poll.secret_token" 
               target="_blank" 
               class="text-teal-600 hover:text-teal-700 dark:text-teal-400 dark:hover:text-teal-300 font-medium hover:underline"
@@ -55,7 +65,13 @@
               Lien de vote
             </a>
           </td>
-          <td class="px-6 py-4 text-sm text-right">
+          <td class="px-6 py-4 text-sm text-right space-x-2">
+            <button 
+              @click="$emit('edit-poll', poll)" 
+              class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded-md text-xs font-medium transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800"
+            >
+              Modifier
+            </button>
             <button 
               @click="deletePoll(poll.id)" 
               class="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-md text-xs font-medium transition focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800"

@@ -1,10 +1,16 @@
 <script setup>
-  import { ref } from 'vue';
+  import { ref, watch } from 'vue';
   import { useFetchApi } from '@/composables/useFetchApi';
   import { usePollStore } from '@/stores/usePollStore';
 
+  const props = defineProps({
+    pollToEdit: { type: Object, default: null }
+  });
+
+  const emit = defineEmits(['cancel-edit']);
+
   const { fetchApi } = useFetchApi();
-  const { addPoll } = usePollStore();
+  const { addPoll, setPolls, polls } = usePollStore();
 
   const title = ref('');
   const question = ref('');
@@ -19,38 +25,87 @@
     options.value.push('');
   }
 
+  function resetForm() {
+    title.value = '';
+    question.value = '';
+    options.value = ['', ''];
+    isMultipleChoice.value = false;
+    isPublicResults.value = false;
+    isDraft.value = false;
+  }
+
+  function cancelEdit() {
+    resetForm();
+    emit('cancel-edit');
+  }
+
+  watch(() => props.pollToEdit, async (newVal) => {
+    if (newVal) {
+      title.value = newVal.title || '';
+      question.value = newVal.question || '';
+      isMultipleChoice.value = !!newVal.allow_multiple_choices;
+      isPublicResults.value = !!newVal.results_public;
+      isDraft.value = !!newVal.is_draft;
+
+      // Récupérer les options complètes via l'URL publique
+      try {
+        const detailedPoll = await fetchApi({ url: `/polls/${newVal.secret_token}` });
+        if (detailedPoll && detailedPoll.options && detailedPoll.options.length > 0) {
+          options.value = detailedPoll.options.map(o => o.label);
+        } else {
+          options.value = ['', ''];
+        }
+      } catch (e) {
+        options.value = ['', ''];
+      }
+    } else {
+      resetForm();
+    }
+  });
+
   async function submitForm() {
     try {
-      const newPoll = await fetchApi({
-        url: '/polls',
-        data: {
-          title: title.value,
-          question: question.value,
-          options: options.value.filter(opt => opt.trim() !== ''),
-          isMultipleChoice: isMultipleChoice.value,
-          isPublicResults: isPublicResults.value,
-          isDraft: isDraft.value
-        },
-      });
+      const data = {
+        title: title.value,
+        question: question.value,
+        options: options.value.filter(opt => opt.trim() !== ''),
+        isMultipleChoice: isMultipleChoice.value,
+        isPublicResults: isPublicResults.value,
+        isDraft: isDraft.value
+      };
 
-      addPoll(newPoll);
-      
-      // Réinitialiser le formulaire
-      title.value = '';
-      question.value = '';
-      options.value = ['', ''];
-      isMultipleChoice.value = false;
-      isPublicResults.value = false;
-      isDraft.value = false;
+      if (props.pollToEdit) {
+        // Mode édition : requête PUT
+        const updatedPoll = await fetchApi({
+          url: `/polls/${props.pollToEdit.id}`,
+          method: 'PUT',
+          data: data
+        });
+        
+        // Mettre à jour la liste dans le store
+        setPolls(polls.value.map(p => p.id === updatedPoll.id ? updatedPoll : p));
+        cancelEdit();
+      } else {
+        // Mode création : requête POST
+        const newPoll = await fetchApi({
+          url: '/polls',
+          data: data,
+        });
+
+        addPoll(newPoll);
+        resetForm();
+      }
     } catch (error) {
-      console.error('Failed to create poll:', error);
+      console.error('Failed to save poll:', error);
     }
   }
 </script>
 
 <template>
   <div class="bg-white dark:bg-slate-800 shadow rounded-lg p-6">
-    <h2 class="text-lg font-semibold text-slate-800 dark:text-white mb-5">Créer un nouveau sondage</h2>
+    <h2 class="text-lg font-semibold text-slate-800 dark:text-white mb-5">
+      {{ pollToEdit ? 'Modifier le sondage' : 'Créer un nouveau sondage' }}
+    </h2>
     
     <form @submit.prevent="submitForm" class="space-y-5">
       <div>
@@ -124,12 +179,20 @@
         </div>
       </div>
 
-      <div class="pt-2">
+      <div class="pt-2 flex gap-3">
         <button 
           type="submit" 
           class="w-full sm:w-auto bg-teal-600 hover:bg-teal-700 text-white font-medium py-2 px-6 rounded-md transition focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
         >
-          Publier le sondage
+          {{ pollToEdit ? 'Mettre à jour' : 'Publier le sondage' }}
+        </button>
+        <button 
+          v-if="pollToEdit"
+          type="button" 
+          @click="cancelEdit"
+          class="w-full sm:w-auto bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-white font-medium py-2 px-6 rounded-md transition focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2"
+        >
+          Annuler
         </button>
       </div>
     </form>
