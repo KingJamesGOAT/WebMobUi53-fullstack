@@ -27,10 +27,15 @@ class ApiPollController extends Controller
      */
     public function store(Request $request)
     {
-        // Simple validation for the basic fields
+        // Simple validation for the basic fields and new options/settings
         $request->validate([
             'title' => 'nullable|string|max:255',
             'question' => 'required|string|max:255',
+            'options' => 'required|array',
+            'options.*' => 'required|string|max:255',
+            'isMultipleChoice' => 'boolean',
+            'isPublicResults' => 'boolean',
+            'isDraft' => 'boolean',
         ]);
 
         // Create a new Poll explicitly to avoid mass assignment issues
@@ -39,11 +44,23 @@ class ApiPollController extends Controller
         $poll->title = $request->title;
         $poll->question = $request->question;
         
+        $poll->allow_multiple_choices = $request->isMultipleChoice ?? false;
+        $poll->results_public = $request->isPublicResults ?? false;
+        $poll->is_draft = $request->isDraft ?? false;
+
         // Generate a random 10-character string for the secret token
         $poll->secret_token = \Illuminate\Support\Str::random(10); 
         
         // Save the new poll to the database
         $poll->save();
+
+        // Create the associated options
+        foreach ($request->options as $optionText) {
+            $option = new PollOption();
+            $option->poll_id = $poll->id;
+            $option->label = $optionText;
+            $option->save();
+        }
 
         // Return the newly created poll as a JSON response with status 201 Created
         return response()->json($poll, 201);

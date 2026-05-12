@@ -1,5 +1,5 @@
 @props([
-    'bodyClass' => 'min-h-screen bg-slate-50 text-slate-900 antialiased',
+    'bodyClass' => 'flex min-h-screen flex-col bg-slate-50 dark:bg-slate-900',
 ])
 
 <!DOCTYPE html>
@@ -7,25 +7,38 @@
 
 <head>
     <meta charset="utf-8">
-    @isset($description)
-        <meta name="description" content="{{ $description }}">
-    @endisset
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Sondages - {{ config('app.name') }}</title>
 
-    @isset($title)
-        <title>{{ $title }} - {{ config('app.name') }}</title>
-    @else
-        <title>{{ config('app.name') }}</title>
-    @endisset
-
-    @vite(['resources/css/app.css'])
     @isset($scripts)
         {{ $scripts }}
     @endisset
 </head>
 
 <body {{ $attributes->class([$bodyClass]) }}>
-    {{ $slot }}
+    <header class="bg-teal-600 text-white dark:bg-slate-800">
+        <nav class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="h-16 flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                    <a href="{{ url('/') }}" class="block hover:opacity-80 transition font-bold">
+                        {{ config('app.name') }}
+                    </a>
+                    <a href="{{ url('/posts') }}" class="block hover:opacity-80 transition">
+                        Retour aux posts
+                    </a>
+                    @auth
+                        <a href="{{ url('/polls/dashboard') }}" class="block hover:opacity-80 transition font-bold">
+                            Mes Sondages
+                        </a>
+                    @endauth
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main class="container mx-auto px-4 py-8 sm:px-6 lg:px-8 flex-grow dark:text-white max-w-4xl">
+        {{ $slot }}
+    </main>
 </body>
 
 </html>

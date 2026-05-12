@@ -78,67 +78,89 @@
 </script>
 
 <template>
-  <!-- Loading state -->
-  <p v-if="!poll && !errorMessage">Chargement...</p>
+  <div class="bg-white dark:bg-slate-800 shadow rounded-lg p-6 max-w-2xl mx-auto mt-8">
+    
+    <!-- Loading state -->
+    <div v-if="!poll && !errorMessage" class="text-center py-8 text-slate-500 dark:text-slate-400">
+      <p>Chargement du sondage...</p>
+    </div>
 
-  <!-- Error when poll could not be loaded -->
-  <p v-if="!poll && errorMessage" style="color: red;">{{ errorMessage }}</p>
+    <!-- Error when poll could not be loaded -->
+    <div v-if="!poll && errorMessage" class="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-4 rounded-md text-center">
+      <p>{{ errorMessage }}</p>
+    </div>
 
-  <!-- Poll loaded successfully -->
-  <div v-if="poll">
-    <h1>{{ poll.question }}</h1>
+    <!-- Poll loaded successfully -->
+    <div v-if="poll" class="space-y-6">
+      
+      <h1 class="text-xl font-bold text-slate-900 dark:text-white">{{ poll.question }}</h1>
 
-    <!-- Vote form with radio buttons -->
-    <form @submit.prevent="submitVote">
-      <div v-for="option in poll.options" :key="option.id">
-        <label>
-          <input
-            type="radio"
-            :value="option.id"
-            v-model="selectedOptionId"
-            name="poll-option"
-          />
-          {{ option.label }}
-        </label>
-      </div>
-
-      <button type="submit" :disabled="selectedOptionId === null" style="margin-top: 1rem;">
-        Voter
-      </button>
-    </form>
-
-    <!-- Success message -->
-    <p v-if="successMessage" style="color: green; margin-top: 1rem;">{{ successMessage }}</p>
-
-    <!-- Error message -->
-    <p v-if="errorMessage" style="color: red; margin-top: 1rem;">{{ errorMessage }}</p>
-
-    <!-- Live Results Section -->
-    <div style="margin-top: 2rem;">
-      <h2>Résultats ({{ totalVotes }} votes)</h2>
-
-      <!-- One bar per option -->
-      <div v-for="option in poll.options" :key="'result-' + option.id" style="margin-bottom: 0.75rem;">
-        <!-- Option label, vote count and percentage -->
-        <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
-          <span>{{ option.label }}</span>
-          <span>{{ option.votes_count }} ({{ getPercentage(option.votes_count) }}%)</span>
+      <!-- Vote form with radio buttons -->
+      <form @submit.prevent="submitVote" class="space-y-4">
+        <div class="space-y-3">
+          <div v-for="option in poll.options" :key="option.id" class="flex items-center">
+            <input
+              type="radio"
+              :id="'option-' + option.id"
+              :value="option.id"
+              v-model="selectedOptionId"
+              name="poll-option"
+              class="h-4 w-4 text-teal-600 focus:ring-teal-500 border-slate-300 dark:border-slate-600 dark:bg-slate-900"
+            />
+            <label :for="'option-' + option.id" class="ml-3 block text-base font-medium text-slate-700 dark:text-slate-300 cursor-pointer">
+              {{ option.label }}
+            </label>
+          </div>
         </div>
 
-        <!-- Background bar (grey track) -->
-        <div style="background-color: #e5e7eb; border-radius: 4px; height: 20px; width: 100%;">
-          <!-- Filled bar (teal, width set to the percentage) -->
-          <div
-            :style="{
-              width: getPercentage(option.votes_count) + '%',
-              backgroundColor: '#0d9488',
-              height: '100%',
-              borderRadius: '4px',
-              transition: 'width 0.3s ease',
-            }"
-          ></div>
+        <div class="pt-2">
+          <button 
+            type="submit" 
+            :disabled="selectedOptionId === null" 
+            class="w-full sm:w-auto bg-teal-600 hover:bg-teal-700 text-white font-medium py-2 px-6 rounded-md transition focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Voter
+          </button>
+        </div>
+      </form>
+
+      <!-- Success message -->
+      <div v-if="successMessage" class="p-3 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-md text-sm font-medium">
+        {{ successMessage }}
+      </div>
+
+      <!-- Error message -->
+      <div v-if="errorMessage && poll" class="p-3 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-md text-sm font-medium">
+        {{ errorMessage }}
+      </div>
+
+      <!-- Live Results Section -->
+      <div class="pt-6 border-t border-slate-200 dark:border-slate-700">
+        <h2 class="text-lg font-semibold text-slate-800 dark:text-white mb-4">
+          Résultats <span class="text-sm font-normal text-slate-500 dark:text-slate-400">({{ totalVotes }} votes)</span>
+        </h2>
+
+        <div class="space-y-4">
+          <!-- One bar per option -->
+          <div v-for="option in poll.options" :key="'result-' + option.id">
+            <!-- Option label, vote count and percentage -->
+            <div class="flex justify-between text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+              <span>{{ option.label }}</span>
+              <span>{{ option.votes_count }} ({{ getPercentage(option.votes_count) }}%)</span>
+            </div>
+
+            <!-- Background bar (grey track) -->
+            <div class="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5 overflow-hidden">
+              <!-- Filled bar (teal, width set to the percentage) -->
+              <div
+                class="bg-teal-600 h-2.5 rounded-full transition-all duration-500 ease-out"
+                :style="{ width: getPercentage(option.votes_count) + '%' }"
+              ></div>
+            </div>
+          </div>
         </div>
       </div>
+
     </div>
   </div>
 </template>
