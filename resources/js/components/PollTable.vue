@@ -1,4 +1,5 @@
 <script setup>
+  import { ref } from 'vue';
   import { useFetchApi } from '@/composables/useFetchApi';
   import { usePollStore } from '@/stores/usePollStore';
 
@@ -7,6 +8,12 @@
   });
 
   const emit = defineEmits(['edit-poll', 'start-poll']);
+
+  const expandedPollId = ref(null);
+
+  function toggleStats(id) {
+    expandedPollId.value = expandedPollId.value === id ? null : id;
+  }
 
   const { fetchApi } = useFetchApi();
   const { setPolls } = usePollStore();
@@ -42,7 +49,8 @@
         </tr>
       </thead>
       <tbody class="divide-y divide-slate-200 dark:divide-slate-700">
-        <tr v-for="poll in polls" :key="poll.id" class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition">
+        <template v-for="poll in polls" :key="poll.id">
+          <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition">
           <td class="px-6 py-4 text-sm font-medium text-slate-900 dark:text-white">{{ poll.title || 'Sans titre' }}</td>
           <td class="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">{{ poll.question }}</td>
           <td class="px-6 py-4 text-sm text-slate-500 dark:text-slate-400">
@@ -67,6 +75,12 @@
           </td>
           <td class="px-6 py-4 text-sm text-right space-x-2">
             <button 
+              @click="toggleStats(poll.id)" 
+              class="bg-slate-500 hover:bg-slate-600 text-white px-3 py-1.5 rounded-md text-xs font-medium transition focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800"
+            >
+              Stats
+            </button>
+            <button 
               @click="$emit('edit-poll', poll)" 
               class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded-md text-xs font-medium transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800"
             >
@@ -80,6 +94,16 @@
             </button>
           </td>
         </tr>
+        <tr v-if="expandedPollId === poll.id">
+          <td colspan="5" class="px-6 py-4 bg-slate-50 dark:bg-slate-800/30 border-t border-slate-200 dark:border-slate-700">
+            <ul class="list-disc pl-5 space-y-1">
+              <li v-for="option in poll.options" :key="option.id" class="text-sm text-slate-700 dark:text-slate-300">
+                {{ option.label }} : <span class="font-bold">{{ option.votes_count }} vote(s)</span>
+              </li>
+            </ul>
+          </td>
+        </tr>
+        </template>
       </tbody>
     </table>
   </div>
