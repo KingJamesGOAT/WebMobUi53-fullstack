@@ -7,10 +7,16 @@
 
   const token = ref('');
   const poll = ref(null);
-  const selectedOptions = ref([]); // Tableau pour gérer choix simple et multiple
+
+  // Deux variables séparées selon le type de sondage
+  const selectedOptionsMulti = ref([]);   // Pour les checkboxes (choix multiple)
+  const selectedOptionSingle = ref(null); // Pour les radios (choix unique)
+
   const successMessage = ref('');
   const errorMessage = ref('');
   const hasVoted = ref(false);
+  // Labels des choix sélectionnés, affichés après le vote comme retour visuel
+  const votedLabels = ref([]);
 
   async function fetchPoll() {
     if (!token.value) return;
@@ -54,10 +60,10 @@
     errorMessage.value = '';
 
     try {
-      // Normalise en tableau : selectedOptions est un tableau pour checkbox, une valeur simple pour radio
-      const ids = Array.isArray(selectedOptions.value)
-        ? selectedOptions.value
-        : [selectedOptions.value];
+      // Prépare le tableau d'IDs selon le mode du sondage
+      const ids = poll.value.allow_multiple_choices
+        ? selectedOptionsMulti.value
+        : [selectedOptionSingle.value];
 
       // Envoi d'une seule requête avec tous les identifiants sélectionnés
       await fetchApi({
@@ -65,8 +71,13 @@
         data: { option_ids: ids },
       });
 
+      // Récupère les labels des options choisies pour le retour visuel
+      votedLabels.value = poll.value.options
+        .filter(opt => ids.includes(opt.id))
+        .map(opt => opt.label);
+
       successMessage.value = 'Votre vote a été enregistré !';
-      
+
       // Bloquer le formulaire dans le navigateur
       hasVoted.value = true;
       localStorage.setItem('voted_' + token.value, 'true');
@@ -100,14 +111,29 @@
       <form v-else-if="!hasVoted" @submit.prevent="submitVote" class="space-y-4">
         <div class="space-y-3">
           <div v-for="option in poll.options" :key="option.id" class="flex items-center">
+
+            <!-- Checkbox pour les sondages à choix multiple -->
             <input
-              :type="poll.allow_multiple_choices ? 'checkbox' : 'radio'"
+              v-if="poll.allow_multiple_choices"
+              type="checkbox"
               :id="'option-' + option.id"
               :value="option.id"
-              v-model="selectedOptions"
+              v-model="selectedOptionsMulti"
               name="poll-option"
               class="h-4 w-4 text-teal-600 focus:ring-teal-500 border-slate-300 dark:border-slate-600 dark:bg-slate-900"
             />
+
+            <!-- Radio pour les sondages à choix unique -->
+            <input
+              v-else
+              type="radio"
+              :id="'option-' + option.id"
+              :value="option.id"
+              v-model="selectedOptionSingle"
+              name="poll-option"
+              class="h-4 w-4 text-teal-600 focus:ring-teal-500 border-slate-300 dark:border-slate-600 dark:bg-slate-900"
+            />
+
             <label :for="'option-' + option.id" class="ml-3 block text-base font-medium text-slate-700 dark:text-slate-300 cursor-pointer">
               {{ option.label }}
             </label>
@@ -115,9 +141,9 @@
         </div>
 
         <div class="pt-2">
-          <button 
-            type="submit" 
-            :disabled="selectedOptions.length === 0" 
+          <button
+            type="submit"
+            :disabled="poll.allow_multiple_choices ? selectedOptionsMulti.length === 0 : selectedOptionSingle === null"
             class="w-full sm:w-auto bg-teal-600 hover:bg-teal-700 text-white font-medium py-2 px-6 rounded-md transition focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Voter
@@ -125,8 +151,13 @@
         </div>
       </form>
 
-      <div v-else class="p-4 bg-teal-50 dark:bg-teal-900/30 text-teal-800 dark:text-teal-300 rounded-md text-center font-medium">
-        Merci d'avoir participé à ce sondage !
+      <!-- Message de confirmation affiché après le vote -->
+      <div v-else class="p-4 bg-teal-50 dark:bg-teal-900/30 text-teal-800 dark:text-teal-300 rounded-md text-center">
+        <p class="font-medium">Merci d'avoir participé à ce sondage !</p>
+        <!-- Retour visuel sur les choix de l'utilisateur, même si les résultats globaux sont privés -->
+        <p v-if="votedLabels.length > 0" class="text-sm mt-1 opacity-80">
+          Vos choix : {{ votedLabels.join(', ') }}
+        </p>
       </div>
 
       <div v-if="poll.results_public" class="pt-6 border-t border-slate-200 dark:border-slate-700">

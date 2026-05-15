@@ -1,6 +1,5 @@
 <script setup>
   import { ref, watch } from 'vue';
-  import { useFetchApi } from '@/composables/useFetchApi';
   import { usePollStore } from '@/stores/usePollStore';
 
   const props = defineProps({
@@ -9,7 +8,6 @@
 
   const emit = defineEmits(['cancel-edit']);
 
-  const { fetchApi } = useFetchApi();
   const { addPoll, setPolls, polls } = usePollStore();
 
   const title = ref('');
@@ -42,7 +40,7 @@
     emit('cancel-edit');
   }
 
-  watch(() => props.pollToEdit, async (newVal) => {
+  watch(() => props.pollToEdit, (newVal) => {
     if (newVal) {
       title.value = newVal.title || '';
       question.value = newVal.question || '';
@@ -51,15 +49,11 @@
       isDraft.value = !!newVal.is_draft;
       duration.value = newVal.duration || null;
 
-      // Récupérer les options complètes via l'URL publique
-      try {
-        const detailedPoll = await fetchApi({ url: `/polls/${newVal.secret_token}` });
-        if (detailedPoll && detailedPoll.options && detailedPoll.options.length > 0) {
-          options.value = detailedPoll.options.map(o => o.label);
-        } else {
-          options.value = ['', ''];
-        }
-      } catch (e) {
+      // Les options sont déjà disponibles dans la prop transmise par le dashboard
+      // (chargées via index() avec withCount). Pas besoin d'un appel réseau supplémentaire.
+      if (newVal.options && newVal.options.length > 0) {
+        options.value = newVal.options.map(o => o.label);
+      } else {
         options.value = ['', ''];
       }
     } else {
