@@ -9,6 +9,15 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Poll extends Model
 {
     /**
+     * Cast these columns to Carbon date objects automatically.
+     * This allows calling ->copy(), ->addHours(), ->greaterThan() etc. on them.
+     */
+    protected $casts = [
+        'started_at' => 'datetime',
+        'ends_at'    => 'datetime',
+    ];
+
+    /**
      * Get the user that owns the poll.
      */
     public function user(): BelongsTo

@@ -247,12 +247,14 @@ class ApiPollController extends Controller
         }
 
         // Step 4: Verify ALL submitted options belong to this poll
+        // Extract to a plain array so Intelephense resolves the whereIn signature correctly
+        $optionIds = (array) $request->option_ids;
         $options = PollOption::query()
-            ->whereIn('id', $request->option_ids)
+            ->whereIn('id', $optionIds)
             ->where('poll_id', $poll->id)
             ->get();
 
-        if ($options->count() !== count($request->option_ids)) {
+        if ($options->count() !== count($optionIds)) {
             return Response::json(['message' => 'Une ou plusieurs options sont invalides.'], 422);
         }
 
@@ -269,7 +271,7 @@ class ApiPollController extends Controller
         }
 
         // Step 6: Save all votes in a single database transaction
-        \DB::transaction(function () use ($poll, $options, $userId) {
+        DB::transaction(function () use ($poll, $options, $userId) {
             foreach ($options as $option) {
                 $vote = new PollVote();
                 $vote->poll_id        = $poll->id;
