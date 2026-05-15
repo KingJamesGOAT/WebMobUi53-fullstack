@@ -1,6 +1,7 @@
 <script setup>
   import { ref, watch } from 'vue';
   import { usePollStore } from '@/stores/usePollStore';
+  import { useFetchApi } from '@/composables/useFetchApi';
 
   const props = defineProps({
     pollToEdit: { type: Object, default: null }
@@ -9,6 +10,7 @@
   const emit = defineEmits(['cancel-edit']);
 
   const { addPoll, setPolls, polls } = usePollStore();
+  const { fetchApi } = useFetchApi();
 
   const title = ref('');
   const question = ref('');
