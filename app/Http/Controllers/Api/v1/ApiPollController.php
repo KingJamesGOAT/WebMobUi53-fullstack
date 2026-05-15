@@ -37,6 +37,7 @@ class ApiPollController extends Controller
             'isMultipleChoice' => 'boolean',
             'isPublicResults' => 'boolean',
             'isDraft' => 'boolean',
+            'duration' => 'nullable|integer|min:1',
         ]);
 
         // Create a new Poll explicitly to avoid mass assignment issues
@@ -48,6 +49,19 @@ class ApiPollController extends Controller
         $poll->allow_multiple_choices = $request->isMultipleChoice ?? false;
         $poll->results_public = $request->isPublicResults ?? false;
         $poll->is_draft = $request->isDraft ?? false;
+        $poll->duration = $request->duration;
+
+        if (!$poll->is_draft) {
+            $poll->started_at = $poll->started_at ?? now();
+            if ($poll->duration) {
+                $poll->ends_at = $poll->started_at->copy()->addHours($poll->duration);
+            } else {
+                $poll->ends_at = null;
+            }
+        } else {
+            $poll->started_at = null;
+            $poll->ends_at = null;
+        }
 
         // Generate a random 10-character string for the secret token
         $poll->secret_token = \Illuminate\Support\Str::random(10); 
@@ -80,6 +94,9 @@ class ApiPollController extends Controller
             return Response::json(['message' => 'Poll not found.'], 404);
         }
 
+        // Add is_expired attribute dynamically
+        $poll->is_expired = $poll->ends_at ? now()->greaterThan($poll->ends_at) : false;
+
         return Response::json($poll);
     }
 
@@ -104,6 +121,7 @@ class ApiPollController extends Controller
             'isMultipleChoice' => 'boolean',
             'isPublicResults' => 'boolean',
             'isDraft' => 'boolean',
+            'duration' => 'nullable|integer|min:1',
         ]);
 
         // Update the poll fields
@@ -112,6 +130,19 @@ class ApiPollController extends Controller
         $poll->allow_multiple_choices = $request->isMultipleChoice ?? false;
         $poll->results_public = $request->isPublicResults ?? false;
         $poll->is_draft = $request->isDraft ?? false;
+        $poll->duration = $request->duration;
+
+        if (!$poll->is_draft) {
+            $poll->started_at = $poll->started_at ?? now();
+            if ($poll->duration) {
+                $poll->ends_at = $poll->started_at->copy()->addHours($poll->duration);
+            } else {
+                $poll->ends_at = null;
+            }
+        } else {
+            $poll->started_at = null;
+            $poll->ends_at = null;
+        }
         $poll->save();
 
         // Update existing options intelligently to preserve votes
@@ -169,6 +200,12 @@ class ApiPollController extends Controller
 
         if (!$poll) {
             return Response::json(['message' => 'Poll not found.'], 404);
+        }
+
+        // Check if poll is expired
+        $isExpired = $poll->ends_at ? now()->greaterThan($poll->ends_at) : false;
+        if ($isExpired) {
+            return Response::json(['message' => 'Ce sondage est expiré, vous ne pouvez plus voter.'], 403);
         }
 
         // Step 2: Validate that an option_id was provided

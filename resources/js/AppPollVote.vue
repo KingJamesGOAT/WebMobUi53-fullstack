@@ -33,6 +33,12 @@
 
   usePolling(fetchPoll, 3000);
 
+  // L'API nous envoie is_expired=true si ends_at est dépassé
+  const isExpired = computed(() => {
+    if (!poll.value) return false;
+    return poll.value.is_expired === true;
+  });
+
   const totalVotes = computed(() => {
     if (!poll.value || !poll.value.options) return 0;
     return poll.value.options.reduce((sum, opt) => sum + opt.votes_count, 0);
@@ -82,7 +88,13 @@
     <div v-if="poll" class="space-y-6">
       <h1 class="text-xl font-bold text-slate-900 dark:text-white">{{ poll.question }}</h1>
 
-      <form v-if="!hasVoted" @submit.prevent="submitVote" class="space-y-4">
+      <!-- Message d'avertissement si le sondage est expiré -->
+      <div v-if="isExpired" class="p-4 bg-amber-50 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 rounded-md text-center font-medium">
+        ⏰ Ce sondage est terminé. Il n'est plus possible de voter.
+      </div>
+
+      <!-- Formulaire de vote : masqué si expiré ou si l'utilisateur a déjà voté -->
+      <form v-else-if="!hasVoted" @submit.prevent="submitVote" class="space-y-4">
         <div class="space-y-3">
           <div v-for="option in poll.options" :key="option.id" class="flex items-center">
             <input

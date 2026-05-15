@@ -20,6 +20,8 @@
   const isMultipleChoice = ref(false);
   const isPublicResults = ref(false);
   const isDraft = ref(false);
+  // Durée en heures (null = pas de limite)
+  const duration = ref(null);
 
   function addOption() {
     options.value.push('');
@@ -32,6 +34,7 @@
     isMultipleChoice.value = false;
     isPublicResults.value = false;
     isDraft.value = false;
+    duration.value = null;
   }
 
   function cancelEdit() {
@@ -46,6 +49,7 @@
       isMultipleChoice.value = !!newVal.allow_multiple_choices;
       isPublicResults.value = !!newVal.results_public;
       isDraft.value = !!newVal.is_draft;
+      duration.value = newVal.duration || null;
 
       // Récupérer les options complètes via l'URL publique
       try {
@@ -71,7 +75,9 @@
         options: options.value.filter(opt => opt.trim() !== ''),
         isMultipleChoice: isMultipleChoice.value,
         isPublicResults: isPublicResults.value,
-        isDraft: isDraft.value
+        isDraft: isDraft.value,
+        // Envoyer null si vide pour effacer une durée existante
+        duration: duration.value ? parseInt(duration.value) : null,
       };
 
       if (props.pollToEdit) {
@@ -176,6 +182,21 @@
           <label for="draft" class="ml-2 block text-sm text-slate-700 dark:text-slate-300">
             Enregistrer comme brouillon
           </label>
+        </div>
+
+        <!-- Durée de disponibilité (optionnelle) -->
+        <div>
+          <label for="poll_duration" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+            Durée de disponibilité (en heures, optionnel)
+          </label>
+          <input
+            id="poll_duration"
+            v-model="duration"
+            type="number"
+            min="1"
+            placeholder="Ex: 24 pour 24h"
+            class="w-full border border-slate-300 dark:border-slate-600 rounded-md px-4 py-2 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition"
+          />
         </div>
       </div>
 
