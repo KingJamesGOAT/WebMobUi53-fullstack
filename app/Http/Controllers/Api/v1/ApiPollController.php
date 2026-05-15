@@ -84,14 +84,35 @@ class ApiPollController extends Controller
     /**
      * Display the specified poll by its secret token.
      */
-    public function show(string $token)
+    public function show(Request $request, string $token)
     {
-        $poll = Poll::query()->with(['options' => function ($query) {
-            $query->withCount('votes');
-        }])->where('secret_token', $token)->first();
+        // Identify the current user (may be null for anonymous visitors)
+        $currentUser = auth('sanctum')->user();
+
+        // Load the poll without vote counts first
+        $poll = Poll::query()->where('secret_token', $token)->first();
 
         if (!$poll) {
             return Response::json(['message' => 'Poll not found.'], 404);
+        }
+
+        // Determine if the current user is the owner of this poll
+        $isOwner = $currentUser && $currentUser->id === $poll->user_id;
+
+        // Security: block access to a draft for anyone who is not the owner
+        if ($poll->is_draft && !$isOwner) {
+            return Response::json(['message' => 'Ce sondage n\'est pas encore disponible.'], 403);
+        }
+
+        // Only load vote counts if results are public OR if the user is the owner
+        // This prevents leaking private statistics through the JSON response
+        if ($poll->results_public || $isOwner) {
+            $poll->load(['options' => function ($query) {
+                $query->withCount('votes');
+            }]);
+        } else {
+            // Load options without vote counts for private polls
+            $poll->load('options');
         }
 
         // Add is_expired attribute dynamically
@@ -200,6 +221,11 @@ class ApiPollController extends Controller
 
         if (!$poll) {
             return Response::json(['message' => 'Poll not found.'], 404);
+        }
+
+        // Block votes on draft polls
+        if ($poll->is_draft) {
+            return Response::json(['message' => 'Impossible de voter sur un sondage en brouillon.'], 403);
         }
 
         // Check if poll is expired
