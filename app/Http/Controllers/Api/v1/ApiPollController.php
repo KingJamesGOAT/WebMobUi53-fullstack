@@ -247,10 +247,10 @@ class ApiPollController extends Controller
         }
 
         // Step 4: Verify ALL submitted options belong to this poll
-        // Extract to a plain array so Intelephense resolves the whereIn signature correctly
         $optionIds = (array) $request->option_ids;
-        $options = PollOption::query()
-            ->whereIn('id', $optionIds)
+        /** @var \Illuminate\Database\Eloquent\Builder $query */
+        $query = PollOption::query();
+        $options = $query->whereIn('id', $optionIds)
             ->where('poll_id', $poll->id)
             ->get();
 
