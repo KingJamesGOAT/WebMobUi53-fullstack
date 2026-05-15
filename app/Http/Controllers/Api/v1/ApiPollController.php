@@ -7,6 +7,7 @@ use App\Models\Poll;
 use App\Models\PollOption;
 use App\Models\PollVote;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Response;
 
 class ApiPollController extends Controller
@@ -234,40 +235,51 @@ class ApiPollController extends Controller
             return Response::json(['message' => 'Ce sondage est expiré, vous ne pouvez plus voter.'], 403);
         }
 
-        // Step 2: Validate that an option_id was provided
+        // Step 2: Validate that option_ids is a non-empty array of integers
         $request->validate([
-            'option_id' => 'required|integer',
+            'option_ids'   => 'required|array|min:1',
+            'option_ids.*' => 'required|integer',
         ]);
 
-        // Step 3: Verify the selected option actually belongs to this poll
-        $option = PollOption::query()->where('id', $request->option_id)
-            ->where('poll_id', $poll->id)
-            ->first();
-
-        if (!$option) {
-            return Response::json(['message' => 'This option does not belong to this poll.'], 422);
+        // Step 3: Reject single-choice polls when more than one option is submitted
+        if (!$poll->allow_multiple_choices && count($request->option_ids) > 1) {
+            return Response::json(['message' => 'Ce sondage n\'autorise qu\'un seul choix.'], 422);
         }
 
-        // Step 4: Single-choice protection
-        // If the poll does NOT allow multiple choices, check if the user already voted
-        if (!$poll->allow_multiple_choices && $userId) {
-            $existingVote = PollVote::query()->where('poll_id', $poll->id)
+        // Step 4: Verify ALL submitted options belong to this poll
+        $options = PollOption::query()
+            ->whereIn('id', $request->option_ids)
+            ->where('poll_id', $poll->id)
+            ->get();
+
+        if ($options->count() !== count($request->option_ids)) {
+            return Response::json(['message' => 'Une ou plusieurs options sont invalides.'], 422);
+        }
+
+        // Step 5: Uniqueness check — block if the connected user has already voted on this poll
+        if ($userId) {
+            $existingVote = PollVote::query()
+                ->where('poll_id', $poll->id)
                 ->where('user_id', $userId)
                 ->first();
 
             if ($existingVote) {
-                return Response::json(['message' => 'You have already voted on this poll.'], 403);
+                return Response::json(['message' => 'Vous avez déjà voté pour ce sondage.'], 403);
             }
         }
 
-        // Step 5: Save the new vote to the database
-        $vote = new PollVote();
-        $vote->poll_id = $poll->id;
-        $vote->user_id = $userId;
-        $vote->poll_option_id = $option->id;
-        $vote->save();
+        // Step 6: Save all votes in a single database transaction
+        \DB::transaction(function () use ($poll, $options, $userId) {
+            foreach ($options as $option) {
+                $vote = new PollVote();
+                $vote->poll_id        = $poll->id;
+                $vote->user_id        = $userId;
+                $vote->poll_option_id = $option->id;
+                $vote->save();
+            }
+        });
 
-        // Step 6: Return a success response
-        return Response::json(['message' => 'Vote submitted successfully.'], 200);
+        // Step 7: Return a success response
+        return Response::json(['message' => 'Vote enregistré avec succès.'], 200);
     }
 }

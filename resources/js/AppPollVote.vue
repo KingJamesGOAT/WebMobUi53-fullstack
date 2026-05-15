@@ -54,13 +54,16 @@
     errorMessage.value = '';
 
     try {
-      // Boucle pour envoyer un vote par option cochée (pour le choix multiple)
-      for (const optionId of selectedOptions.value) {
-        await fetchApi({
-          url: '/polls/' + token.value + '/vote',
-          data: { option_id: optionId },
-        });
-      }
+      // Normalise en tableau : selectedOptions est un tableau pour checkbox, une valeur simple pour radio
+      const ids = Array.isArray(selectedOptions.value)
+        ? selectedOptions.value
+        : [selectedOptions.value];
+
+      // Envoi d'une seule requête avec tous les identifiants sélectionnés
+      await fetchApi({
+        url: '/polls/' + token.value + '/vote',
+        data: { option_ids: ids },
+      });
 
       successMessage.value = 'Votre vote a été enregistré !';
       
